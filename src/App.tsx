@@ -46,7 +46,8 @@ import {
   signOut, 
   onAuthStateChanged,
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithPopup,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { 
   doc, 
@@ -190,6 +191,7 @@ export default function App() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [showProfileSetup, setShowProfileSetup] = useState(false);
   const [authError, setAuthError] = useState('');
+  const [authSuccess, setAuthSuccess] = useState('');
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
 
   // Profile fields
@@ -472,6 +474,37 @@ export default function App() {
         errMsg = `Erro (${err.code || 'Desconhecido'}): ${err.message}`;
       }
       setAuthError(errMsg);
+      setAuthLoading(false);
+    }
+  };
+
+  // Firebase Password Reset
+  const handlePasswordReset = async () => {
+    if (!email.trim()) {
+      setAuthError('Por favor, digite o seu e-mail no campo acima antes de clicar em redefinir senha.');
+      setAuthSuccess('');
+      return;
+    }
+    setAuthLoading(true);
+    setAuthError('');
+    setAuthSuccess('');
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+      setAuthSuccess('E-mail de redefinição enviado com sucesso! Verifique a sua caixa de entrada.');
+    } catch (err: any) {
+      console.error('Password Reset Error:', err);
+      let errMsg = 'Erro ao enviar e-mail de redefinição de senha.';
+      if (err.code === 'auth/user-not-found') {
+        errMsg = 'Não encontramos nenhuma conta cadastrada com este e-mail.';
+      } else if (err.code === 'auth/invalid-email') {
+        errMsg = 'Formato de e-mail inválido.';
+      } else if (err.code === 'auth/operation-not-allowed') {
+        errMsg = 'A redefinição de senha não está ativada ou não é permitida no momento.';
+      } else if (err.message) {
+        errMsg = `Erro: ${err.message}`;
+      }
+      setAuthError(errMsg);
+    } finally {
       setAuthLoading(false);
     }
   };
@@ -1026,6 +1059,13 @@ export default function App() {
                 </div>
               )}
 
+              {/* Success alerts */}
+              {authSuccess && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-semibold mb-4 text-center">
+                  {authSuccess}
+                </div>
+              )}
+
               {/* PROFILE SETUP MODE (FIRST LOGIN ONLY) */}
               {showProfileSetup ? (
                 <div className="space-y-5">
@@ -1138,6 +1178,7 @@ export default function App() {
                       onClick={() => {
                         setAuthMode('login');
                         setAuthError('');
+                        setAuthSuccess('');
                       }}
                       className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider relative transition-colors ${
                         authMode === 'login' ? 'text-[#2D2D24]' : 'text-[#8C8A7C]'
@@ -1153,6 +1194,7 @@ export default function App() {
                       onClick={() => {
                         setAuthMode('register');
                         setAuthError('');
+                        setAuthSuccess('');
                       }}
                       className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider relative transition-colors ${
                         authMode === 'register' ? 'text-[#2D2D24]' : 'text-[#8C8A7C]'
@@ -1183,9 +1225,21 @@ export default function App() {
 
                     {/* Senha */}
                     <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-[#8C8A7C] mb-2">
-                        Senha Secreta
-                      </label>
+                      <div className="flex justify-between items-center mb-2">
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-[#8C8A7C]">
+                          Senha Secreta
+                        </label>
+                        {authMode === 'login' && (
+                          <button
+                            type="button"
+                            onClick={handlePasswordReset}
+                            className="text-[11px] font-semibold text-[#5A5A40] hover:text-[#4A4A34] hover:underline cursor-pointer transition-all"
+                            title="Digite seu e-mail acima para redefinir"
+                          >
+                            Esqueceu a senha?
+                          </button>
+                        )}
+                      </div>
                       <input
                         type="password"
                         required
