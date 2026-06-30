@@ -35,7 +35,8 @@ import {
   ZoomIn,
   ZoomOut,
   Mail,
-  Key
+  Key,
+  X
 } from 'lucide-react';
 import { Player, Desk, ChatMessage, OfficeRoom } from './types';
 import { auth, db } from './firebase';
@@ -206,6 +207,14 @@ export default function App() {
   // Sidebar collapsing
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
+  // Tutorial / Instructions showing (only for first login/onboarding)
+  const [showTutorial, setShowTutorial] = useState(() => {
+    return localStorage.getItem('virtual_office_seen_tutorial') !== 'true';
+  });
+
+  // Zooming in/out on the map
+  const [mapZoom, setMapZoom] = useState(1);
+
   // Sync / Room States
   const [clientId, setClientId] = useState<string | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -365,6 +374,28 @@ export default function App() {
     }, 1000);
 
     return () => clearInterval(bubbleInterval);
+  }, []);
+
+  // Wheel zoom listener (Ctrl + Scroll)
+  useEffect(() => {
+    const workspaceElement = document.getElementById('map_workspace');
+    if (!workspaceElement) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        const delta = e.deltaY < 0 ? 0.05 : -0.05;
+        setMapZoom((prev) => {
+          const nextZoom = prev + delta;
+          return Math.min(3.0, Math.max(0.5, nextZoom));
+        });
+      }
+    };
+
+    workspaceElement.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      workspaceElement.removeEventListener('wheel', handleWheel);
+    };
   }, []);
 
   // Listen to Firebase Auth state changes
@@ -1730,58 +1761,84 @@ export default function App() {
             </button>
 
             {/* WORKSPACE & VIRTUAL MAP AREA */}
-            <div className="flex-1 flex flex-col p-6 overflow-y-auto items-center justify-start min-w-0" id="map_workspace">
+            <div className="flex-1 flex flex-col p-6 overflow-y-auto items-center justify-start min-w-0 relative" id="map_workspace">
               
               {/* Informative Header card */}
-              <div className="max-w-[880px] w-full bg-white border border-[#DCDAD2] rounded-2xl p-4 mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-[#F9F8F6] border border-[#DCDAD2] text-[#5A5A40] rounded-xl">
-                    <Info className="w-4.5 h-4.5" />
+              {showTutorial && (
+                <div className="max-w-[880px] w-full bg-white border border-[#DCDAD2] rounded-2xl p-4 mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-sm relative">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-[#F9F8F6] border border-[#DCDAD2] text-[#5A5A40] rounded-xl">
+                      <Info className="w-4.5 h-4.5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-[#2D2D24]">Como navegar pelo escritório:</h3>
+                      <p className="text-xs text-[#4A4A3A] mt-0.5">
+                        Use as teclas <span className="px-1.5 py-0.5 bg-[#F9F8F6] border border-[#DCDAD2] rounded font-mono text-[10px] text-[#5A5A40] font-semibold">W, A, S, D</span> / <span className="px-1.5 py-0.5 bg-[#F9F8F6] border border-[#DCDAD2] rounded font-mono text-[10px] text-[#5A5A40] font-semibold">Setas</span>, ou simplesmente <span className="text-[#5A5A40] font-bold">clique em qualquer local</span> do mapa para caminhar até lá.
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-[#2D2D24]">Como navegar pelo escritório:</h3>
-                    <p className="text-xs text-[#4A4A3A] mt-0.5">
-                      Use as teclas <span className="px-1.5 py-0.5 bg-[#F9F8F6] border border-[#DCDAD2] rounded font-mono text-[10px] text-[#5A5A40] font-semibold">W, A, S, D</span> / <span className="px-1.5 py-0.5 bg-[#F9F8F6] border border-[#DCDAD2] rounded font-mono text-[10px] text-[#5A5A40] font-semibold">Setas</span>, ou simplesmente <span className="text-[#5A5A40] font-bold">clique em qualquer local</span> do mapa para caminhar até lá.
-                    </p>
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
-                  <span className="text-xs font-semibold text-[#8C8A7C]">Status do Time:</span>
-                  <div className="flex -space-x-2">
-                    {players.slice(0, 5).map((p) => (
-                      <div
-                        key={p.id}
-                        className="w-7 h-7 rounded-full border-2 border-white flex items-center justify-center text-[9px] font-sans font-bold text-white uppercase shadow-md overflow-hidden select-none shrink-0"
-                        style={{ backgroundColor: getProfessionalColor(p.name) }}
-                        title={`${p.name} (${p.role})`}
-                      >
-                        {p.photoUrl ? (
-                          <img src={p.photoUrl} alt={p.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                        ) : (
-                          getInitials(p.name)
+                  <div className="flex items-center gap-4 self-start sm:self-center shrink-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-[#8C8A7C]">Status do Time:</span>
+                      <div className="flex -space-x-2">
+                        {players.slice(0, 5).map((p) => (
+                          <div
+                            key={p.id}
+                            className="w-7 h-7 rounded-full border-2 border-white flex items-center justify-center text-[9px] font-sans font-bold text-white uppercase shadow-md overflow-hidden select-none shrink-0"
+                            style={{ backgroundColor: getProfessionalColor(p.name) }}
+                            title={`${p.name} (${p.role})`}
+                          >
+                            {p.photoUrl ? (
+                              <img src={p.photoUrl} alt={p.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            ) : (
+                              getInitials(p.name)
+                            )}
+                          </div>
+                        ))}
+                        {players.length > 5 && (
+                          <div className="w-7 h-7 rounded-full border-2 border-white bg-[#C7C4B8] text-white flex items-center justify-center text-[10px] font-bold">
+                            +{players.length - 5}
+                          </div>
                         )}
                       </div>
-                    ))}
-                    {players.length > 5 && (
-                      <div className="w-7 h-7 rounded-full border-2 border-white bg-[#C7C4B8] text-white flex items-center justify-center text-[10px] font-bold">
-                        +{players.length - 5}
-                      </div>
-                    )}
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        localStorage.setItem('virtual_office_seen_tutorial', 'true');
+                        setShowTutorial(false);
+                      }}
+                      className="p-1.5 hover:bg-[#F9F8F6] hover:text-rose-600 rounded-lg text-[#8C8A7C] transition-colors cursor-pointer flex items-center justify-center"
+                      title="Ocultar instruções para sempre"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* VIRTUAL CANVAS / MAP */}
+              {/* VIRTUAL CANVAS / MAP WRAPPER WITH ZOOM SUPPORT */}
               <div
-                ref={mapContainerRef}
-                className="relative office-grid select-none border border-[#DCDAD2] rounded-3xl bg-[#E8E6E1] overflow-hidden shadow-xl shrink-0 cursor-pointer"
+                className="relative select-none border border-[#DCDAD2] rounded-3xl bg-[#E8E6E1] overflow-hidden shadow-xl shrink-0 cursor-pointer"
                 style={{
-                  width: `${GRID_COLS * TILE_SIZE}px`,
-                  height: `${GRID_ROWS * TILE_SIZE}px`
+                  width: `${GRID_COLS * TILE_SIZE * mapZoom}px`,
+                  height: `${GRID_ROWS * TILE_SIZE * mapZoom}px`,
+                  transition: 'width 0.1s ease-out, height 0.1s ease-out',
                 }}
-                id="virtual_office_map"
               >
+                <div
+                  ref={mapContainerRef}
+                  className="relative office-grid"
+                  style={{
+                    width: `${GRID_COLS * TILE_SIZE}px`,
+                    height: `${GRID_ROWS * TILE_SIZE}px`,
+                    transform: `scale(${mapZoom})`,
+                    transformOrigin: 'top left',
+                    transition: 'transform 0.1s ease-out',
+                  }}
+                  id="virtual_office_map"
+                >
                 {/* 2.1 ROOM DIVISION BANNERS & FLOOR TILES */}
                 {OFFICE_ROOMS.map((room) => {
                   const left = room.x * TILE_SIZE;
@@ -2077,6 +2134,38 @@ export default function App() {
                 </div>
 
               </div>
+            </div>
+
+            {/* FLOATING ZOOM CONTROLS */}
+            <div className="absolute bottom-6 right-6 bg-white/90 backdrop-blur-md border border-[#DCDAD2] rounded-2xl p-2.5 flex items-center gap-2 shadow-lg z-10" id="zoom_controls">
+              <button
+                onClick={() => setMapZoom((prev) => Math.max(0.5, prev - 0.1))}
+                className="p-1.5 hover:bg-[#F9F8F6] rounded-xl text-[#5A5A40] transition-colors cursor-pointer flex items-center justify-center"
+                title="Diminuir Zoom"
+              >
+                <ZoomOut className="w-4 h-4" />
+              </button>
+              <span className="text-xs font-mono font-bold text-[#4A4A3A] min-w-[48px] text-center select-none">
+                {Math.round(mapZoom * 100)}%
+              </span>
+              <button
+                onClick={() => setMapZoom((prev) => Math.min(3.0, prev + 0.1))}
+                className="p-1.5 hover:bg-[#F9F8F6] rounded-xl text-[#5A5A40] transition-colors cursor-pointer flex items-center justify-center"
+                title="Aumentar Zoom"
+              >
+                <ZoomIn className="w-4 h-4" />
+              </button>
+              <div className="w-[1px] h-4 bg-[#DCDAD2]" />
+              <button
+                onClick={() => setMapZoom(1)}
+                className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[#5A5A40] hover:bg-[#F9F8F6] rounded-lg transition-colors cursor-pointer"
+              >
+                Reset
+              </button>
+              <span className="text-[9px] text-[#8C8A7C] font-semibold hidden md:inline-block ml-1">
+                (Ctrl + Scroll)
+              </span>
+            </div>
 
               {/* Sit / Stand action card */}
               {me && (
