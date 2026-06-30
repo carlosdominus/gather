@@ -59,7 +59,7 @@ function syncAll() {
 
 // Handle connection upgrade
 server.on('upgrade', (request, socket, head) => {
-  if (request.url?.startsWith('/ws') || request.url === '/' || request.url === '') {
+  if (request.url?.startsWith('/ws')) {
     wss.handleUpgrade(request, socket, head, (ws) => {
       wss.emit('connection', ws, request);
     });

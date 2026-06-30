@@ -243,6 +243,20 @@ export default function App() {
 
   const socketRef = useRef<WebSocket | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Keep state refs up to date to prevent stale closure bugs in WebSocket event handlers
+  const isLoggedInRef = useRef(isLoggedIn);
+  const usernameRef = useRef(username);
+  const selectedRoleRef = useRef(selectedRole);
+  const photoUrlRef = useRef(photoUrl);
+  const myPosRef = useRef(myPos);
+
+  useEffect(() => { isLoggedInRef.current = isLoggedIn; }, [isLoggedIn]);
+  useEffect(() => { usernameRef.current = username; }, [username]);
+  useEffect(() => { selectedRoleRef.current = selectedRole; }, [selectedRole]);
+  useEffect(() => { photoUrlRef.current = photoUrl; }, [photoUrl]);
+  useEffect(() => { myPosRef.current = myPos; }, [myPos]);
 
   // Get current local player object
   const me = useMemo(() => {
@@ -257,6 +271,11 @@ export default function App() {
 
   // Connect to websocket server
   const connectWebSocket = () => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+
     if (socketRef.current) {
       socketRef.current.close();
     }
@@ -264,24 +283,26 @@ export default function App() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws`;
     
+    console.log('Connecting to WebSocket:', wsUrl);
     const ws = new WebSocket(wsUrl);
     socketRef.current = ws;
 
     ws.onopen = () => {
+      console.log('WebSocket successfully opened');
       setConnected(true);
-      // Join immediately if already logged in
-      if (isLoggedIn && username.trim()) {
+      // Join immediately if already logged in using fresh ref values
+      if (isLoggedInRef.current && usernameRef.current.trim()) {
         ws.send(
           JSON.stringify({
             type: 'join',
             payload: {
-              name: username.trim(),
-              color: getProfessionalColor(username.trim()),
-              role: selectedRole,
+              name: usernameRef.current.trim(),
+              color: getProfessionalColor(usernameRef.current.trim()),
+              role: selectedRoleRef.current,
               emoji: '',
-              photoUrl: photoUrl || '',
-              x: myPos.x,
-              y: myPos.y
+              photoUrl: photoUrlRef.current || '',
+              x: myPosRef.current.x,
+              y: myPosRef.current.y
             }
           })
         );
@@ -342,18 +363,26 @@ export default function App() {
       }
     };
 
-    ws.onclose = () => {
+    ws.onclose = (e) => {
+      console.log('WebSocket closed:', e.code, e.reason);
       setConnected(false);
       setClientId(null);
-      // Reconnect after 3 seconds
-      setTimeout(() => {
-        if (isLoggedIn) {
+      
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+
+      // Reconnect after 3 seconds only if still logged in
+      reconnectTimeoutRef.current = setTimeout(() => {
+        if (isLoggedInRef.current) {
+          console.log('Attempting to reconnect WebSocket...');
           connectWebSocket();
         }
       }, 3000);
     };
 
-    ws.onerror = () => {
+    ws.onerror = (err) => {
+      console.error('WebSocket connection error:', err);
       setConnected(false);
     };
   };
@@ -444,6 +473,10 @@ export default function App() {
       connectWebSocket();
     }
     return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
       if (socketRef.current) {
         socketRef.current.close();
       }
