@@ -1,0 +1,11 @@
+{
+  "name": "Virtual Office",
+  "description": "Um escritório virtual simples e elegante para equipes remotas com avatares em tempo real e chamadas de vídeo automáticas por proximidade.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
