@@ -12,11 +12,6 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Helper: Checks if the document ID is a valid ID
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
-    }
-
     // Helper: Validates a User profile document shape
     function isValidUser(data) {
       return data.uid == request.auth.uid
@@ -25,19 +20,16 @@ service cloud.firestore {
         && data.role is string && data.role.size() <= 100
         && data.color is string && data.color.size() <= 30
         && data.emoji is string && data.emoji.size() <= 20
-        && (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 1200000))
-        && data.createdAt is timestamp
-        && data.updatedAt is timestamp;
+        && (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 1200000));
     }
 
     // Match block for users collection
     match /users/{userId} {
-      allow get: if isSignedIn() && isValidId(userId);
+      allow get: if isSignedIn() && userId == request.auth.uid;
       allow list: if isSignedIn();
 
       // Create: User must be creating their own profile with correct schema
       allow create: if isSignedIn() 
-        && isValidId(userId) 
         && userId == request.auth.uid 
         && isValidUser(request.resource.data)
         && request.resource.data.createdAt == request.time
@@ -45,7 +37,6 @@ service cloud.firestore {
 
       // Update: User can only update their own profile, preserving createdAt
       allow update: if isSignedIn() 
-        && isValidId(userId) 
         && userId == request.auth.uid 
         && isValidUser(request.resource.data)
         && request.resource.data.createdAt == resource.data.createdAt

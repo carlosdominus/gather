@@ -1745,7 +1745,7 @@ export default function App() {
             {/* COLLAPSIBLE TOGGLE HANDLE */}
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="absolute top-4 z-20 p-2 bg-white border border-[#DCDAD2] rounded-full shadow-md text-[#5A5A40] hover:bg-[#F9F8F6] hover:text-[#2D2D24] transition-all cursor-pointer flex items-center justify-center"
+              className="absolute top-1/2 -translate-y-1/2 z-20 p-2 bg-white border border-[#DCDAD2] rounded-full shadow-md text-[#5A5A40] hover:bg-[#F9F8F6] hover:text-[#2D2D24] transition-all cursor-pointer flex items-center justify-center"
               style={{
                 left: sidebarCollapsed ? '12px' : '304px',
                 transition: 'left 0.28s cubic-bezier(0.4, 0, 0.2, 1)'
