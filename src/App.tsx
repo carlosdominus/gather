@@ -466,6 +466,10 @@ export default function App() {
         errMsg = 'E-mail ou senha incorretos.';
       } else if (err.code === 'auth/invalid-email') {
         errMsg = 'Formato de e-mail inválido.';
+      } else if (err.code === 'auth/operation-not-allowed') {
+        errMsg = 'O login com E-mail e Senha não está ativado no Console do Firebase (Authentication).';
+      } else if (err.message) {
+        errMsg = `Erro (${err.code || 'Desconhecido'}): ${err.message}`;
       }
       setAuthError(errMsg);
       setAuthLoading(false);
@@ -508,6 +512,10 @@ export default function App() {
         errMsg = 'A senha deve conter no mínimo 6 caracteres.';
       } else if (err.code === 'auth/invalid-email') {
         errMsg = 'Formato de e-mail inválido.';
+      } else if (err.code === 'auth/operation-not-allowed') {
+        errMsg = 'O cadastro com E-mail/Senha está desativado no Console do Firebase (Authentication). Ative-o para continuar.';
+      } else if (err.message) {
+        errMsg = `Erro (${err.code || 'Desconhecido'}): ${err.message}`;
       }
       setAuthError(errMsg);
       setAuthLoading(false);
@@ -543,7 +551,13 @@ export default function App() {
     } catch (err: any) {
       console.error('Google Sign-In Error:', err);
       if (err.code !== 'auth/popup-closed-by-user') {
-        setAuthError('Erro ao entrar com o Google. Tente novamente.');
+        let errMsg = 'Erro ao entrar com o Google. Tente novamente.';
+        if (err.code === 'auth/operation-not-allowed') {
+          errMsg = 'O provedor Google não está ativado no painel de Authentication do Firebase. Ative-o em seu console.';
+        } else if (err.message) {
+          errMsg = `Erro Google (${err.code || 'Desconhecido'}): ${err.message}`;
+        }
+        setAuthError(errMsg);
       }
     } finally {
       setAuthLoading(false);
@@ -1393,10 +1407,10 @@ export default function App() {
                   id="sidebar_area"
                 >
                   {/* Tabs selector */}
-                  <div className="flex border-b border-[#DCDAD2] shrink-0">
+                  <div className="flex border-b border-[#DCDAD2] shrink-0 pr-12">
                     <button
                       onClick={() => setActiveTab('team')}
-                      className={`flex-1 py-4 text-xs font-display font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer relative ${
+                      className={`flex-1 py-4 text-[11px] font-display font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer relative ${
                         activeTab === 'team' ? 'text-[#2D2D24]' : 'text-[#8C8A7C] hover:text-[#5A5A40]'
                       }`}
                       id="tab_btn_team"
@@ -1413,7 +1427,7 @@ export default function App() {
 
                     <button
                       onClick={() => setActiveTab('chat')}
-                      className={`flex-1 py-4 text-xs font-display font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer relative ${
+                      className={`flex-1 py-4 text-[11px] font-display font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer relative ${
                         activeTab === 'chat' ? 'text-[#2D2D24]' : 'text-[#8C8A7C] hover:text-[#5A5A40]'
                       }`}
                       id="tab_btn_chat"
@@ -1430,7 +1444,7 @@ export default function App() {
 
                     <button
                       onClick={() => setActiveTab('settings')}
-                      className={`flex-1 py-4 text-xs font-display font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer relative ${
+                      className={`flex-1 py-4 text-[11px] font-display font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer relative ${
                         activeTab === 'settings' ? 'text-[#2D2D24]' : 'text-[#8C8A7C] hover:text-[#5A5A40]'
                       }`}
                       id="tab_btn_settings"
